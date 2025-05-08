@@ -1,0 +1,87 @@
+name: Slack SSO Integration Guide
+
+on:
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: 'Environment to configure (development or production)'
+        required: true
+        default: 'development'
+
+jobs:
+  guide:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Display Slack SSO Integration Guide
+        run: |
+          echo "# Slack SSO Integration Guide for Briefly"
+          echo ""
+          echo "## Prerequisites"
+          echo "- A Slack workspace where you have admin privileges"
+          echo "- A Clerk application set up (development or production)"
+          echo ""
+          echo "## Step 1: Configure Clerk for Slack OAuth"
+          echo "1. Go to the Clerk Dashboard: https://dashboard.clerk.dev"
+          echo "2. Select your application"
+          echo "3. Navigate to 'User & Authentication' > 'Social Connections'"
+          echo "4. Look for Slack in the list of providers"
+          echo "5. Click 'Add Connection' and select 'For all users'"
+          echo "6. In the dropdown, select 'Slack'"
+          
+          if [ "${{ github.event.inputs.environment }}" == "production" ]; then
+            echo "7. Ensure both 'Enable for sign-up and sign-in' and 'Use custom credentials' are toggled on"
+            echo "8. Copy the 'Redirect URL' and save it for the next step"
+          else
+            echo "7. For development environment, Clerk uses preconfigured shared OAuth credentials - no other configuration is needed"
+          fi
+          
+          echo ""
+          echo "## Step 2: Create a Slack App"
+          
+          if [ "${{ github.event.inputs.environment }}" == "production" ]; then
+            echo "1. Go to the Slack API Platform: https://api.slack.com/apps"
+            echo "2. Click 'Create New App'"
+            echo "3. Select 'From scratch' and provide your app details"
+            echo "4. After creating the app, note the 'Client ID' and 'Client Secret' from the 'Basic Information' page"
+            echo "5. In the sidebar, go to 'OAuth & Permissions'"
+            echo "6. Under 'Redirect URLs', add the URL you copied from the Clerk Dashboard"
+            echo "7. Scroll down to 'Scopes' and add the following OAuth scopes:"
+            echo "   - identity.basic"
+            echo "   - identity.email"
+            echo "   - identity.team"
+            echo "8. Save your changes"
+            echo ""
+            echo "## Step 3: Configure Clerk with Slack Credentials"
+            echo "1. Return to the Clerk Dashboard"
+            echo "2. Enter the 'Client ID' and 'Client Secret' values from your Slack app"
+            echo "3. Click 'Add connection'"
+          else
+            echo "1. For development environment, you can skip creating a Slack app as Clerk uses shared credentials"
+          fi
+          
+          echo ""
+          echo "## Step 4: Update Environment Variables"
+          echo "1. Add these variables to your .env.local file:"
+          echo "```"
+          echo "NEXT_PUBLIC_CLERK_SIGN_IN_URL=/sign-in"
+          echo "NEXT_PUBLIC_CLERK_SIGN_UP_URL=/sign-up"
+          echo "NEXT_PUBLIC_CLERK_AFTER_SIGN_IN_URL=/dashboard"
+          echo "NEXT_PUBLIC_CLERK_AFTER_SIGN_UP_URL=/dashboard"
+          echo "```"
+          echo ""
+          echo "## Step 5: Test Your Integration"
+          echo "1. Run your Next.js application locally with 'npm run dev'"
+          echo "2. Navigate to '/custom-sign-in' or '/sign-in'"
+          echo "3. Click on the 'Continue with Slack' button"
+          echo "4. Authorize your Slack app when prompted"
+          echo "5. You should be successfully authenticated and redirected to your dashboard"
+          
+          echo ""
+          echo "## Troubleshooting"
+          echo "- If authentication fails, check that your redirect URLs match exactly"
+          echo "- Verify that you've added the necessary OAuth scopes to your Slack app"
+          echo "- For production issues, ensure your Clerk app is properly configured with your custom credentials"
+          echo "- Check that your environment variables are properly set up" 

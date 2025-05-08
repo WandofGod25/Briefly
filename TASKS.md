@@ -9,14 +9,14 @@
 - [x] Set up development environment variables
 
 ## Authentication & User Management
-- [~] Implement Clerk/Auth0 integration
+- [x] Implement Clerk/Auth0 integration
   - [x] Install Clerk dependencies
   - [x] Set up middleware
   - [x] Create basic auth UI
-  - [ ] Configure Clerk environment variables
-  - [ ] Test authentication flow
-- [ ] Set up Slack SSO
-- [ ] Create user profile management
+  - [x] Configure Clerk environment variables
+  - [x] Test authentication flow
+- [x] Set up Slack SSO
+- [x] Create user profile management
 - [ ] Implement authentication middleware
 - [ ] Set up user roles and permissions
 
