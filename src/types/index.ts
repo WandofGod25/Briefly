@@ -6,12 +6,16 @@ export interface User {
 }
 
 export interface Report {
-  id: string
+  id?: string
   userId: string
+  title?: string
   content: string
-  createdAt: Date
-  updatedAt: Date
-  tasks?: Task[]
+  structuredContent: string
+  tasks: string[]
+  status: 'draft' | 'finalized'
+  createdAt: string
+  updatedAt: string
+  reportId: string
 }
 
 export interface Task {

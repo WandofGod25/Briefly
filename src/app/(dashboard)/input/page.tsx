@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import VoiceRecorder from '@/components/recording/VoiceRecorder';
 import TextInput from '@/components/recording/TextInput';
 import SmartPromptInterface from '@/components/prompts/SmartPromptInterface';
+import ExportModal from '@/components/export/ExportModal';
 import { useAuth } from '@clerk/nextjs';
 import { useRouter } from 'next/navigation';
 
@@ -166,8 +167,11 @@ export default function InputPage() {
   const [generatingReport, setGeneratingReport] = useState(false);
   const [structuredReport, setStructuredReport] = useState('');
   const [reportTasks, setReportTasks] = useState<string[]>([]);
-  const [reportMode, setReportMode] = useState<'draft' | 'structured' | 'editing'>('draft');
+  const [reportMode, setReportMode] = useState<'draft' | 'structured' | 'editing' | 'finalizing'>('draft');
   const [editableReport, setEditableReport] = useState('');
+  const [savingReport, setSavingReport] = useState(false);
+  const [reportTitle, setReportTitle] = useState(`Weekly Report - ${new Date().toLocaleDateString()}`);
+  const [showExportModal, setShowExportModal] = useState(false);
   const router = useRouter();
   const { isLoaded, userId } = useAuth();
 
@@ -248,10 +252,53 @@ export default function InputPage() {
     }
   };
 
-  const handleSave = () => {
-    // Here you would save the report to your backend
-    // For now, we'll just redirect back to the dashboard
-    router.push('/dashboard');
+  const handleSave = async () => {
+    if (reportMode === 'draft') {
+      // Just save the draft - for now just redirect
+      router.push('/dashboard');
+      return;
+    }
+    
+    // If we're in structured or editing mode, we'll finalize the report
+    try {
+      setSavingReport(true);
+      
+      const response = await fetch('/api/finalize-report', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          draftContent: inputContent,
+          structuredContent: structuredReport,
+          tasks: reportTasks,
+          title: reportTitle
+        }),
+      });
+      
+      if (!response.ok) {
+        throw new Error('Failed to finalize report');
+      }
+      
+      const data = await response.json();
+      
+      if (data.success) {
+        // Show a finalization success message
+        setReportMode('finalizing');
+        
+        // After a brief delay, redirect to the dashboard
+        setTimeout(() => {
+          router.push('/dashboard');
+        }, 3000);
+      } else {
+        throw new Error(data.error || 'Failed to finalize report');
+      }
+    } catch (error) {
+      console.error('Report finalization error:', error);
+      alert('Failed to finalize report. Please try again.');
+    } finally {
+      setSavingReport(false);
+    }
   };
 
   const handleGenerateStructuredReport = async () => {
@@ -302,6 +349,18 @@ export default function InputPage() {
   const handleSaveEdits = () => {
     setStructuredReport(editableReport);
     setReportMode('structured');
+  };
+
+  const handleReportTitleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setReportTitle(e.target.value);
+  };
+
+  const handleOpenExportModal = () => {
+    setShowExportModal(true);
+  };
+
+  const handleCloseExportModal = () => {
+    setShowExportModal(false);
   };
 
   // If auth is still loading or user is not authenticated, show loading spinner
@@ -394,7 +453,26 @@ export default function InputPage() {
               >
                 Edit Report
               </button>
+              <button
+                onClick={handleOpenExportModal}
+                className="px-4 py-2 bg-purple-600 text-white rounded-md hover:bg-purple-700 transition-colors"
+              >
+                Export
+              </button>
             </div>
+          </div>
+          
+          <div className="mb-4">
+            <label htmlFor="reportTitle" className="block text-sm font-medium text-gray-700 mb-1">
+              Report Title
+            </label>
+            <input
+              type="text"
+              id="reportTitle"
+              value={reportTitle}
+              onChange={handleReportTitleChange}
+              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500"
+            />
           </div>
 
           <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 mb-6">
@@ -436,12 +514,24 @@ export default function InputPage() {
             >
               Back to Draft
             </button>
-            <button
-              onClick={handleSave}
-              className="px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 transition-colors"
-            >
-              Save Report
-            </button>
+            <div className="flex space-x-3">
+              <button
+                onClick={handleOpenExportModal}
+                className="px-4 py-2 bg-purple-600 text-white rounded-md hover:bg-purple-700 transition-colors flex items-center"
+              >
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-1" viewBox="0 0 20 20" fill="currentColor">
+                  <path fillRule="evenodd" d="M3 17a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm3.293-7.707a1 1 0 011.414 0L9 10.586V3a1 1 0 112 0v7.586l1.293-1.293a1 1 0 111.414 1.414l-3 3a1 1 0 01-1.414 0l-3-3a1 1 0 010-1.414z" clipRule="evenodd" />
+                </svg>
+                Export
+              </button>
+              <button
+                onClick={handleSave}
+                disabled={savingReport}
+                className={`px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 transition-colors ${savingReport ? 'opacity-70 cursor-not-allowed' : ''}`}
+              >
+                {savingReport ? 'Saving...' : 'Finalize Report'}
+              </button>
+            </div>
           </div>
         </div>
       );
@@ -471,6 +561,25 @@ export default function InputPage() {
             >
               Save Edits
             </button>
+          </div>
+        </div>
+      );
+    } else if (reportMode === 'finalizing') {
+      return (
+        <div className="mt-8 text-center">
+          <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-8 mb-6">
+            <div className="mx-auto w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mb-4">
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-8 w-8 text-green-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+              </svg>
+            </div>
+            <h2 className="text-2xl font-bold text-gray-800 mb-2">Report Finalized!</h2>
+            <p className="text-gray-600 mb-4">
+              Your report has been successfully finalized and saved.
+            </p>
+            <p className="text-sm text-gray-500">
+              You will be redirected to the dashboard shortly...
+            </p>
           </div>
         </div>
       );
@@ -612,6 +721,15 @@ export default function InputPage() {
           </div>
         </div>
       ) : null}
+      
+      {/* Export Modal */}
+      <ExportModal
+        isOpen={showExportModal}
+        onClose={handleCloseExportModal}
+        reportContent={structuredReport}
+        reportTitle={reportTitle}
+        reportTasks={reportTasks}
+      />
     </div>
   );
 } 
