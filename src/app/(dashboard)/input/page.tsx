@@ -163,6 +163,11 @@ export default function InputPage() {
   const [processingInput, setProcessingInput] = useState(false);
   const [inputContent, setInputContent] = useState('');
   const [reportIsValid, setReportIsValid] = useState(false);
+  const [generatingReport, setGeneratingReport] = useState(false);
+  const [structuredReport, setStructuredReport] = useState('');
+  const [reportTasks, setReportTasks] = useState<string[]>([]);
+  const [reportMode, setReportMode] = useState<'draft' | 'structured' | 'editing'>('draft');
+  const [editableReport, setEditableReport] = useState('');
   const router = useRouter();
   const { isLoaded, userId } = useAuth();
 
@@ -230,14 +235,73 @@ export default function InputPage() {
   };
 
   const handleBack = () => {
-    setInputType(null);
-    setInputContent('');
+    if (reportMode === 'structured' || reportMode === 'editing') {
+      // Go back to draft mode
+      setReportMode('draft');
+    } else {
+      // Go back to input selection
+      setInputType(null);
+      setInputContent('');
+      setStructuredReport('');
+      setReportTasks([]);
+      setReportMode('draft');
+    }
   };
 
   const handleSave = () => {
     // Here you would save the report to your backend
     // For now, we'll just redirect back to the dashboard
     router.push('/dashboard');
+  };
+
+  const handleGenerateStructuredReport = async () => {
+    setGeneratingReport(true);
+    try {
+      const response = await fetch('/api/generate-report', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          content: inputContent,
+          userRole: 'developer', // This could be made dynamic based on user's role
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to generate report');
+      }
+
+      const data = await response.json();
+      
+      if (data.success) {
+        setStructuredReport(data.structuredReport);
+        setReportTasks(data.tasks || []);
+        setReportMode('structured');
+        // Initialize editable report with structured report
+        setEditableReport(data.structuredReport);
+      } else {
+        throw new Error(data.error || 'Failed to generate report');
+      }
+    } catch (error) {
+      console.error('Report generation error:', error);
+      alert('Failed to generate report. Please try again.');
+    } finally {
+      setGeneratingReport(false);
+    }
+  };
+
+  const handleEditReport = () => {
+    setReportMode('editing');
+  };
+
+  const handleReportChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
+    setEditableReport(e.target.value);
+  };
+
+  const handleSaveEdits = () => {
+    setStructuredReport(editableReport);
+    setReportMode('structured');
   };
 
   // If auth is still loading or user is not authenticated, show loading spinner
@@ -260,6 +324,158 @@ export default function InputPage() {
       </div>
     );
   }
+
+  const renderReportSection = () => {
+    if (reportMode === 'draft') {
+      return (
+        <div className="mt-8">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+            <div className="md:col-span-2">
+              <div className="flex justify-between items-center mb-4">
+                <h3 className="text-xl font-medium">Your Report Draft</h3>
+                <button
+                  onClick={handleGenerateStructuredReport}
+                  disabled={!reportIsValid || generatingReport}
+                  className={`px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700 transition-colors ${!reportIsValid || generatingReport ? 'opacity-50 cursor-not-allowed' : ''}`}
+                >
+                  {generatingReport ? 'Generating...' : 'Generate Structured Report'}
+                </button>
+              </div>
+              <div style={styles.previewBox} className="min-h-[300px]">
+                {inputContent}
+              </div>
+              
+              <div style={styles.buttonGroup}>
+                <button
+                  onClick={handleBack}
+                  style={styles.backButton}
+                  className="hover:bg-gray-100"
+                >
+                  Back
+                </button>
+                <button
+                  onClick={handleSave}
+                  style={styles.saveButton}
+                  className={`hover:bg-green-600 ${!reportIsValid ? 'opacity-50 cursor-not-allowed' : ''}`}
+                  disabled={!reportIsValid}
+                  title={!reportIsValid ? "Please complete all required sections" : "Save your report"}
+                >
+                  Save Draft
+                </button>
+              </div>
+              
+              {!reportIsValid && (
+                <div className="mt-4 p-3 bg-amber-50 text-amber-700 rounded-md text-sm">
+                  Please complete all required sections before saving or generating your report.
+                </div>
+              )}
+            </div>
+            
+            <div>
+              <SmartPromptInterface 
+                onApplyPrompt={handleApplyPrompt} 
+                existingContent={inputContent}
+                userRole="developer"
+                onValidate={handleValidation}
+              />
+            </div>
+          </div>
+        </div>
+      );
+    } else if (reportMode === 'structured') {
+      return (
+        <div className="mt-8">
+          <div className="flex justify-between items-center mb-4">
+            <h3 className="text-xl font-medium">Structured Report</h3>
+            <div className="space-x-2">
+              <button
+                onClick={handleEditReport}
+                className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors"
+              >
+                Edit Report
+              </button>
+            </div>
+          </div>
+
+          <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 mb-6">
+            <div className="prose max-w-none">
+              {structuredReport.split('\n').map((line, index) => {
+                if (line.startsWith('## ')) {
+                  return <h2 key={index} className="text-xl font-semibold mt-6 mb-3 text-gray-800">{line.replace('## ', '')}</h2>;
+                } else if (line.startsWith('# ')) {
+                  return <h1 key={index} className="text-2xl font-bold mt-6 mb-4 text-gray-900">{line.replace('# ', '')}</h1>;
+                } else if (line.trim() === '') {
+                  return <br key={index} />;
+                } else {
+                  return <p key={index} className="my-2 text-gray-700">{line}</p>;
+                }
+              })}
+            </div>
+          </div>
+
+          {reportTasks.length > 0 && (
+            <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 mb-6">
+              <h3 className="text-lg font-medium mb-4 text-gray-800">Extracted Tasks</h3>
+              <ul className="space-y-2">
+                {reportTasks.map((task, index) => (
+                  <li key={index} className="flex items-start">
+                    <span className="inline-block w-5 h-5 bg-indigo-100 text-indigo-600 rounded-full mr-2 flex-shrink-0 text-center">
+                      {index + 1}
+                    </span>
+                    <span className="text-gray-700">{task}</span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
+
+          <div className="flex justify-between">
+            <button
+              onClick={handleBack}
+              className="px-4 py-2 bg-gray-200 text-gray-700 rounded-md hover:bg-gray-300 transition-colors"
+            >
+              Back to Draft
+            </button>
+            <button
+              onClick={handleSave}
+              className="px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 transition-colors"
+            >
+              Save Report
+            </button>
+          </div>
+        </div>
+      );
+    } else if (reportMode === 'editing') {
+      return (
+        <div className="mt-8">
+          <div className="flex justify-between items-center mb-4">
+            <h3 className="text-xl font-medium">Edit Report</h3>
+          </div>
+
+          <textarea
+            value={editableReport}
+            onChange={handleReportChange}
+            className="w-full min-h-[400px] p-4 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent mb-4 font-mono text-sm"
+          />
+
+          <div className="flex justify-between">
+            <button
+              onClick={() => setReportMode('structured')}
+              className="px-4 py-2 bg-gray-200 text-gray-700 rounded-md hover:bg-gray-300 transition-colors"
+            >
+              Cancel
+            </button>
+            <button
+              onClick={handleSaveEdits}
+              className="px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700 transition-colors"
+            >
+              Save Edits
+            </button>
+          </div>
+        </div>
+      );
+    }
+  };
 
   return (
     <div className="max-w-4xl mx-auto" style={styles.container}>
@@ -335,50 +551,7 @@ export default function InputPage() {
           </div>
         </div>
       ) : inputContent ? (
-        <div className="mt-8">
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-            <div className="md:col-span-2">
-              <h3 className="text-xl font-medium mb-4">Your Report</h3>
-              <div style={styles.previewBox} className="min-h-[300px]">
-                {inputContent}
-              </div>
-              
-              <div style={styles.buttonGroup}>
-                <button
-                  onClick={handleBack}
-                  style={styles.backButton}
-                  className="hover:bg-gray-100"
-                >
-                  Back
-                </button>
-                <button
-                  onClick={handleSave}
-                  style={styles.saveButton}
-                  className={`hover:bg-green-600 ${!reportIsValid ? 'opacity-50 cursor-not-allowed' : ''}`}
-                  disabled={!reportIsValid}
-                  title={!reportIsValid ? "Please complete all required sections" : "Save your report"}
-                >
-                  Save Report
-                </button>
-              </div>
-              
-              {!reportIsValid && (
-                <div className="mt-4 p-3 bg-amber-50 text-amber-700 rounded-md text-sm">
-                  Please complete all required sections before saving your report.
-                </div>
-              )}
-            </div>
-            
-            <div>
-              <SmartPromptInterface 
-                onApplyPrompt={handleApplyPrompt} 
-                existingContent={inputContent}
-                userRole="developer"
-                onValidate={handleValidation}
-              />
-            </div>
-          </div>
-        </div>
+        renderReportSection()
       ) : inputType === 'voice' ? (
         <div className="bg-white rounded-xl shadow-md p-8" style={styles.card}>
           <h2 className="text-2xl font-semibold mb-6 text-center" style={styles.cardTitle}>Voice Recording</h2>

@@ -35,10 +35,10 @@
 - [x] Add input validation for prompts
 
 ### Weekly Report Generator
-- [ ] Set up OpenAI GPT-4 integration
-- [ ] Implement report structuring logic
-- [ ] Create report preview component
-- [ ] Add report editing functionality
+- [x] Set up OpenAI GPT-4 integration
+- [x] Implement report structuring logic
+- [x] Create report preview component
+- [x] Add report editing functionality
 - [ ] Implement report finalization
 
 ### Export Options
