@@ -9,6 +9,7 @@ import { usePathname } from "next/navigation";
 export default function Navigation() {
   const { isLoaded, isSignedIn, getToken } = useAuth();
   const [isAdmin, setIsAdmin] = useState(false);
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const pathname = usePathname();
 
   useEffect(() => {
@@ -53,11 +54,22 @@ export default function Navigation() {
   
   // Get the class name for navigation links
   const getLinkClassName = (path: string) => {
-    return `inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium ${
+    return `relative inline-flex items-center px-4 py-2 text-sm font-medium ${
       isActive(path) 
-        ? "border-indigo-500 text-gray-900"
-        : "border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700"
-    }`;
+        ? "text-indigo-600"
+        : "text-gray-600 hover:text-indigo-500"
+    } transition-colors duration-200 ease-in-out`;
+  };
+
+  // Get the active indicator class
+  const getActiveBorderClass = (path: string) => {
+    return isActive(path) 
+      ? "absolute bottom-0 left-0 w-full h-0.5 bg-indigo-500" 
+      : "";
+  };
+
+  const toggleMobileMenu = () => {
+    setMobileMenuOpen(!mobileMenuOpen);
   };
 
   return (
@@ -66,10 +78,10 @@ export default function Navigation() {
         <div className="flex justify-between h-16">
           <div className="flex items-center">
             <Link href="/" className="flex-shrink-0 flex items-center">
-              <span className="text-xl font-bold text-indigo-600">Briefly</span>
+              <span className="text-2xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-indigo-500 to-purple-600">Briefly</span>
             </Link>
             
-            <div className="hidden sm:ml-6 sm:flex sm:space-x-8">
+            <div className="hidden sm:ml-8 sm:flex sm:space-x-2">
               {isLoaded && isSignedIn && (
                 <>
                   <Link 
@@ -77,6 +89,15 @@ export default function Navigation() {
                     className={getLinkClassName("/dashboard")}
                   >
                     Dashboard
+                    <span className={getActiveBorderClass("/dashboard")}></span>
+                  </Link>
+                  
+                  <Link
+                    href="/input"
+                    className={getLinkClassName("/input")}
+                  >
+                    Input
+                    <span className={getActiveBorderClass("/input")}></span>
                   </Link>
                   
                   <Link
@@ -84,6 +105,7 @@ export default function Navigation() {
                     className={getLinkClassName("/profile")}
                   >
                     Profile
+                    <span className={getActiveBorderClass("/profile")}></span>
                   </Link>
                   
                   {isAdmin && (
@@ -92,6 +114,7 @@ export default function Navigation() {
                       className={getLinkClassName("/admin")}
                     >
                       Admin
+                      <span className={getActiveBorderClass("/admin")}></span>
                     </Link>
                   )}
                 </>
@@ -102,7 +125,93 @@ export default function Navigation() {
           <div className="flex items-center gap-4">
             {isLoaded && isSignedIn && <UserRoleDisplay />}
             <UserButton afterSignOutUrl="/" />
+            
+            {/* Mobile menu button */}
+            <div className="sm:hidden">
+              <button 
+                onClick={toggleMobileMenu}
+                className="inline-flex items-center justify-center p-2 rounded-md text-gray-600 hover:text-indigo-500 hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-inset focus:ring-indigo-500"
+              >
+                <span className="sr-only">Open main menu</span>
+                <svg 
+                  className={`${mobileMenuOpen ? 'hidden' : 'block'} h-6 w-6`} 
+                  xmlns="http://www.w3.org/2000/svg" 
+                  fill="none" 
+                  viewBox="0 0 24 24" 
+                  stroke="currentColor" 
+                  aria-hidden="true"
+                >
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 6h16M4 12h16M4 18h16" />
+                </svg>
+                <svg 
+                  className={`${mobileMenuOpen ? 'block' : 'hidden'} h-6 w-6`} 
+                  xmlns="http://www.w3.org/2000/svg" 
+                  fill="none" 
+                  viewBox="0 0 24 24" 
+                  stroke="currentColor" 
+                  aria-hidden="true"
+                >
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
           </div>
+        </div>
+      </div>
+      
+      {/* Mobile menu */}
+      <div className={`${mobileMenuOpen ? 'block' : 'hidden'} sm:hidden bg-white border-t border-gray-200`}>
+        <div className="px-2 pt-2 pb-3 space-y-1">
+          {isLoaded && isSignedIn && (
+            <>
+              <Link 
+                href="/dashboard" 
+                className={`block px-3 py-2 rounded-md text-base font-medium ${
+                  isActive("/dashboard") 
+                    ? "bg-indigo-50 text-indigo-600" 
+                    : "text-gray-600 hover:bg-gray-50 hover:text-indigo-500"
+                }`}
+                onClick={() => setMobileMenuOpen(false)}
+              >
+                Dashboard
+              </Link>
+              <Link 
+                href="/input" 
+                className={`block px-3 py-2 rounded-md text-base font-medium ${
+                  isActive("/input") 
+                    ? "bg-indigo-50 text-indigo-600" 
+                    : "text-gray-600 hover:bg-gray-50 hover:text-indigo-500"
+                }`}
+                onClick={() => setMobileMenuOpen(false)}
+              >
+                Input
+              </Link>
+              <Link 
+                href="/profile" 
+                className={`block px-3 py-2 rounded-md text-base font-medium ${
+                  isActive("/profile") 
+                    ? "bg-indigo-50 text-indigo-600" 
+                    : "text-gray-600 hover:bg-gray-50 hover:text-indigo-500"
+                }`}
+                onClick={() => setMobileMenuOpen(false)}
+              >
+                Profile
+              </Link>
+              {isAdmin && (
+                <Link 
+                  href="/admin" 
+                  className={`block px-3 py-2 rounded-md text-base font-medium ${
+                    isActive("/admin") 
+                      ? "bg-indigo-50 text-indigo-600" 
+                      : "text-gray-600 hover:bg-gray-50 hover:text-indigo-500"
+                  }`}
+                  onClick={() => setMobileMenuOpen(false)}
+                >
+                  Admin
+                </Link>
+              )}
+            </>
+          )}
         </div>
       </div>
     </nav>

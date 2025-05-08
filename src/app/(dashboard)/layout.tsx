@@ -14,10 +14,22 @@ export default async function DashboardLayout({ children }: DashboardLayoutProps
     redirect("/sign-in");
   }
   
+  const containerStyle = {
+    minHeight: '100vh',
+    backgroundColor: '#f3f4f6',
+  };
+  
+  const contentStyle = {
+    maxWidth: '1152px',
+    margin: '0 auto',
+    padding: '32px 16px',
+    border: '4px dashed purple',
+  };
+  
   return (
-    <div className="min-h-screen bg-gray-100">
+    <div style={containerStyle}>
       <Navigation />
-      <div className="container mx-auto px-4 py-8">
+      <div style={contentStyle}>
         {children}
       </div>
     </div>
